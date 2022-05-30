@@ -8,7 +8,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 replicacion:
-    image: replication
+    image: gnoss/replication
     env_file: .env
     environment:
      virtuosoConnectionString: ${virtuosoConnectionString}
