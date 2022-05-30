@@ -17,9 +17,9 @@ replicacion:
      base: ${base}
      RabbitMQ__colaServiciosWin: ${RabbitMQ}
      RabbitMQ__colaReplicacion: ${RabbitMQ}
-     ColaReplicacionMaster_ColaReplicaVirtuosoTest1: "HOST=197.166.1.21:1111;UID=admin;PWD=admin123;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-     ColaReplicacionMaster_ColaReplicaVirtuosoTest2: "HOST=196.165.1.22:1111;UID=admin;PWD=admin123;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-     ColaReplicacionMasterHome__ColaReplicaHome1: "HOST=196.165.1.23:1111;UID=admin;PWD=admin123;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+     ColaReplicacionMaster_ColaReplicaVirtuosoTest1: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+     ColaReplicacionMaster_ColaReplicaVirtuosoTest2: "HOST=192.168.2.6:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+     ColaReplicacionMasterHome__ColaReplicaHome1: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
      redis__redis__ip__master: ${redis__redis__ip__master}
      redis__redis__bd: ${redis__redis__bd}
      redis__redis__timeout: ${redis__redis__timeout}
@@ -34,7 +34,7 @@ replicacion:
      connectionType: "0"
      intervalo: "100"
     volumes:
-     - ./logs/replicacion:/app/logs
+     - ./logs/replication:/app/logs
 ```
 
 Se pueden consultar los posibles valores de configuración de cada parámetro aquí: https://github.com/equipognoss/Gnoss.Platform.Deploy
