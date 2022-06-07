@@ -4,12 +4,17 @@
 
 Aplicación de segundo plano que permite la alta disponibilidad de lectura. Se encarga de replicar las instrucciones que se han insertado en un servidor de Virtuoso en tantos servidores de Virtuoso réplica como haya configurados.
 
-Este servicio escucha tantas colas de replicación como se hayan configurado en sus variables de configuración. Por ejemplo, si partimos de esta configuración: 
+Este servicio escucha tantas colas de replicación como se hayan configurado en sus variables de configuración. Por ejemplo, si partimos de este fragmento de configuración: 
 
 ```yml
+...
+virtuosoConnectionString: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+virtuosoConnectionString_home: "HOST=192.168.2.6:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+...
 ColaReplicacionMaster_ColaReplicaVirtuosoTest1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
 ColaReplicacionMaster_ColaReplicaVirtuosoTest2: "HOST=192.168.2.21:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
 ColaReplicacionMasterHome__ColaReplicaHome1: "HOST=192.168.2.30:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+...
 ```
 
 Significa que este servicio va a escuchar tres colas: 
@@ -17,13 +22,13 @@ Significa que este servicio va a escuchar tres colas:
 * ColaReplicaVirtuosoTest2
 * ColaReplicaHome1
 
-Los mensajes que lleguen a cada una de esas colas, se insertarán en el servidor de virtuoso especificado para cada una de ellas. 
+Los mensajes que lleguen a cada una de esas colas, se insertarán en el servidor de virtuoso especificado para cada una de ellas. Es decir, los mensajes que lleguen a la cola ColaReplicaVirtuosoTest1 se replicarán en el servidor 192.168.2.20, los de la cola ColaReplicaVirtuosoTest2 en el servidor 192.168.2.21 y los de la cola ColaReplicaHome1 en el servidor 192.168.2.30. 
 
 ¿Qué mensajes van a llegar a cada una de esas colas? Los mensajes que se inserten en los exchange asociados. ColaReplicacionMaster es el exchange a el que se van a vincular las colas ColaReplicaVirtuosoTest1 y ColaReplicaVirtuosoTest2, y ColaReplicacionMasterHome es el exchange que se va a vincular a la cola ColaReplicaHome1. Cualquier mensaje que se inserte en el exchange, se enviará a cada una de las colas asociadas. 
 
-La Web o el API enviarán un mensaje cada vez que se ejecute cualquier instrucción SPARQL de inserción, modificación o eliminación de triples sobre un grafo de comunidad al exchange ColaReplicacionMaster (recursos, personas, grupos, paginasCMS...), y si es sobre un grafo de usuario (mensajes o comentarios a recursos) enviará un mensaje al exchange ColaReplicacionMasterHome. 
+La Web o el API enviarán un mensaje tras ejecutar cualquier instrucción SPARQL de inserción, modificación o eliminación de triples sobre un grafo de comunidad (recursos, personas, grupos, paginasCMS...) en el servidor de virtuoso maestro (192.168.2.5, definido en la variable virtuosoConnectionString), al exchange ColaReplicacionMaster, y si es sobre un grafo de usuario (mensajes o comentarios a recursos), la instrucción se ejecutará en el servidor de virtuoso maestro (192.168.2.6, definido en la variable virtuosoConnectionString_home) y después se enviará un mensaje al exchange ColaReplicacionMasterHome. 
 
-¿Qué arquitectura refleja esta configuración? Esta configuración refleja una arquitectura con 5 servidores de virtuosos, un servidor maestro para los grafos de comunidad, 2 servidores réplica para los grafos de comunidad, un servidor maestro para los grafos de usuarios y un servidor réplica para los grafos de usuarios. 
+¿Qué arquitectura refleja esta configuración? Esta configuración refleja una arquitectura con 5 servidores de virtuosos, un servidor de virtuoso maestro para los grafos de comunidad (192.168.2.5, definido en la variable virtuosoConnectionString), 2 servidores réplica para los grafos de comunidad (192.168.2.20 y 192.168.2.21), un servidor maestro para los grafos de usuarios (192.168.2.6, definido en la variable virtuosoConnectionString_home) y un servidor réplica para los grafos de usuarios (192.168.2.30). 
 
 
 Configuración estandar de esta aplicación en el archivo docker-compose.yml: 
@@ -39,9 +44,9 @@ replicacion:
      base: ${base}
      RabbitMQ__colaServiciosWin: ${RabbitMQ}
      RabbitMQ__colaReplicacion: ${RabbitMQ}
-     ColaReplicacionMaster_ColaReplicaVirtuosoTest1: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-     ColaReplicacionMaster_ColaReplicaVirtuosoTest2: "HOST=192.168.2.6:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-     ColaReplicacionMasterHome__ColaReplicaHome1: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+     ColaReplicacionMaster_ColaReplicaVirtuosoTest1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+     ColaReplicacionMaster_ColaReplicaVirtuosoTest2: "HOST=192.168.2.21:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+     ColaReplicacionMasterHome__ColaReplicaHome1: "HOST=192.168.2.30:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
      redis__redis__ip__master: ${redis__redis__ip__master}
      redis__redis__bd: ${redis__redis__bd}
      redis__redis__timeout: ${redis__redis__timeout}
