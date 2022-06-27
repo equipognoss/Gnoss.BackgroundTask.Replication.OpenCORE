@@ -30,6 +30,28 @@ La Web o el API enviarán un mensaje tras ejecutar cualquier instrucción SPARQL
 
 **¿Qué arquitectura refleja esta configuración?** Esta configuración refleja una arquitectura con 5 servidores de virtuosos, un servidor de virtuoso maestro para los grafos de comunidad (192.168.2.5, definido en la variable virtuosoConnectionString), 2 servidores réplica para los grafos de comunidad (192.168.2.20 y 192.168.2.21), un servidor maestro para los grafos de usuarios (192.168.2.6, definido en la variable virtuosoConnectionString_home) y un servidor réplica para los grafos de usuarios (192.168.2.30). 
 
+**¿Como configurar esta aplicación en otros servicios?** Por defecto esta opción de servicio esta configurada para los siguientes servicios y microservicios:
+
+*[Web](https://github.com/equipognoss/Gnoss.Web.OpenCORE)
+
+*[Gnoss.Web.Api.OpenCORE](https://github.com/equipognoss/Gnoss.Web.Api.OpenCORE)
+
+*[Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE](https://github.com/equipognoss/Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE)
+
+para que se desactive esta opción hay que añadir en el yml de configuracion la siguiente sentencia:
+
+```yml
+...
+replicacionActivada: "false"
+...
+```
+Cuando se tiene esta arquitectura de 5 virtuosos, lo ideal es que se configure en los servicios anteriormente citados la siguiente configuración:
+```yml
+Virtuoso__Escritura__VirtuosoTest1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+```
+Si este campo no esta configurado, coge por defecto 'virtuosoConnectionString' para hacer las insercciones en virtuoso.
+
+
 
 Configuración estandar de esta aplicación en el archivo docker-compose.yml: 
 
