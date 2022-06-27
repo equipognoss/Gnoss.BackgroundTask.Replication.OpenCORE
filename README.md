@@ -32,11 +32,11 @@ La Web o el API enviarán un mensaje tras ejecutar cualquier instrucción SPARQL
 
 **¿Como configurar esta aplicación en otros servicios?** Por defecto esta opción de servicio esta configurada para los siguientes servicios y microservicios:
 
-*[Web](https://github.com/equipognoss/Gnoss.Web.OpenCORE)
+* [Web](https://github.com/equipognoss/Gnoss.Web.OpenCORE)
 
-*[Gnoss.Web.Api.OpenCORE](https://github.com/equipognoss/Gnoss.Web.Api.OpenCORE)
+* [Gnoss.Web.Api.OpenCORE](https://github.com/equipognoss/Gnoss.Web.Api.OpenCORE)
 
-*[Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE](https://github.com/equipognoss/Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE)
+* [Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE](https://github.com/equipognoss/Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE)
 
 para que se desactive esta opción hay que añadir en el yml de configuracion la siguiente sentencia:
 
