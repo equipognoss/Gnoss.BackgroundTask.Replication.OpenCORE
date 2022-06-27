@@ -38,14 +38,14 @@ La Web o el API enviarán un mensaje tras ejecutar cualquier instrucción SPARQL
 
 * [Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE](https://github.com/equipognoss/Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE)
 
-para que se desactive esta opción hay que añadir en el yml de configuracion la siguiente sentencia:
+para que se desactive esta hay que añadir en el yml de configuracion la siguiente sentencia:
 
 ```yml
 ...
 replicacionActivada: "false"
 ...
 ```
-Cuando se tiene esta arquitectura de 5 virtuosos, lo ideal es que se configure en los servicios anteriormente citados que el servidor en el cual se va a hacer la primera inserrción sea un virtuoso maestro, para ello se utiliza la siguiente configuración:
+Cuando se tiene esta arquitectura de 5 virtuosos, lo ideal es que se configure, en los servicios anteriormente citados, un virtuoso maestro en el cual se va a hacer la primera inserción, para ello se utiliza la siguiente configuración:
 ```yml
 Virtuoso__Escritura__VirtuosoTest1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
 ```
