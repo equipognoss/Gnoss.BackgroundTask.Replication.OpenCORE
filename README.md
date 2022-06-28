@@ -8,9 +8,6 @@ Este servicio escucha tantas colas de replicación como se hayan configurado en 
 
 ```yml
 ...
-virtuosoConnectionString: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-virtuosoConnectionString_home: "HOST=192.168.2.6:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-...
 ColaReplicacionMaster_ColaReplicaVirtuosoTest1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
 ColaReplicacionMaster_ColaReplicaVirtuosoTest2: "HOST=192.168.2.21:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
 ColaReplicacionMasterHome__ColaReplicaHome1: "HOST=192.168.2.30:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
@@ -30,13 +27,26 @@ La Web o el API enviarán un mensaje tras ejecutar cualquier instrucción SPARQL
 
 **¿Qué arquitectura refleja esta configuración?** Esta configuración refleja una arquitectura con 5 servidores de virtuosos, un servidor de virtuoso maestro para los grafos de comunidad (192.168.2.5, definido en la variable virtuosoConnectionString), 2 servidores réplica para los grafos de comunidad (192.168.2.20 y 192.168.2.21), un servidor maestro para los grafos de usuarios (192.168.2.6, definido en la variable virtuosoConnectionString_home) y un servidor réplica para los grafos de usuarios (192.168.2.30). 
 
-**¿Como configurar esta aplicación en otros servicios?** Por defecto esta opción de servicio esta configurada para los siguientes servicios y microservicios:
+**¿Qué es necesario configurar en el resto de aplicaciones?** Una vez configurado el servicio de replicación, ya está preparado para replicar todas las instrucciones que le llegen a los servidores maestros al resto de servidores. Sólo falta configurar las aplicaciones que escriben en virtuoso para que sepan en qué servidor deben escribir y de qué servidor debe leer. Las aplicaciones que escriben en virtuoso son las siguientes:
 
 * [Web](https://github.com/equipognoss/Gnoss.Web.OpenCORE)
 
 * [Gnoss.Web.Api.OpenCORE](https://github.com/equipognoss/Gnoss.Web.Api.OpenCORE)
 
 * [Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE](https://github.com/equipognoss/Gnoss.BackgroundTask.SocialSearchGraphGeneration.OpenCORE)
+
+
+Cuando se tiene esta arquitectura de 5 virtuosos, lo ideal es que se configure, en los servicios anteriormente citados, un virtuoso maestro en el cual se va a hacer la primera inserción, para ello se utiliza la siguiente configuración:
+```yml
+...
+Virtuoso__Escritura__Virtuoso1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+Virtuoso__Escritura__home__VirtuosoHome: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+virtuosoConnectionString: "HOST=192.168.2.5:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+virtuosoConnectionString_home: "HOST=192.168.2.6:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
+...
+```
+Si este campo no esta configurado, coge por defecto 'virtuosoConnectionString' para hacer las insercciones en virtuoso.
+
 
 para que se desactive esta hay que añadir en el yml de configuracion la siguiente sentencia:
 
@@ -45,12 +55,6 @@ para que se desactive esta hay que añadir en el yml de configuracion la siguien
 replicacionActivada: "false"
 ...
 ```
-Cuando se tiene esta arquitectura de 5 virtuosos, lo ideal es que se configure, en los servicios anteriormente citados, un virtuoso maestro en el cual se va a hacer la primera inserción, para ello se utiliza la siguiente configuración:
-```yml
-Virtuoso__Escritura__VirtuosoTest1: "HOST=192.168.2.20:1111;UID=dba;PWD=dba;Pooling=true;Max Pool Size=10;Connection Lifetime=15000"
-```
-Si este campo no esta configurado, coge por defecto 'virtuosoConnectionString' para hacer las insercciones en virtuoso.
-
 
 
 Configuración estandar de esta aplicación en el archivo docker-compose.yml: 
