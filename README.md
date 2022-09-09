@@ -2,6 +2,8 @@
 
 # Gnoss.BackgroundTask.Replication.OpenCORE
 
+![](https://github.com/equipognoss/Gnoss.BackgroundTask.Replication.OpenCORE/workflows/BuildReplication/badge.svg)
+
 Aplicación de segundo plano que permite la alta disponibilidad de lectura. Se encarga de replicar las instrucciones que se han insertado en un servidor de Virtuoso en tantos servidores de Virtuoso réplica como haya configurados.
 
 Este servicio escucha tantas colas de replicación como se hayan configurado en sus variables de configuración. Por ejemplo, si partimos de este fragmento de configuración: 
