@@ -63,7 +63,7 @@ Configuración estandar de esta aplicación en el archivo docker-compose.yml:
 
 ```yml
 replicacion:
-    image: gnoss/replication
+    image: gnoss/gnoss.backgroundtask.replication.opencore
     env_file: .env
     environment:
      virtuosoConnectionString: ${virtuosoConnectionString}
