@@ -87,9 +87,13 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             using (var scope = ScopedFactory.CreateScope())
             {
                 EntityContext entityContext = scope.ServiceProvider.GetRequiredService<EntityContext>();
+                entityContext.SetTrackingFalse();
                 UtilidadesVirtuoso utilidadesVirtuoso = scope.ServiceProvider.GetRequiredService<UtilidadesVirtuoso>();
                 LoggingService loggingService = scope.ServiceProvider.GetRequiredService<LoggingService>();
+                RedisCacheWrapper redisCacheWrapper = scope.ServiceProvider.GetRequiredService<RedisCacheWrapper>();
+                ConfigService configService = scope.ServiceProvider.GetRequiredService<ConfigService>();
                 IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication = scope.ServiceProvider.GetRequiredService<IServicesUtilVirtuosoAndReplication>();
+                ComprobarTraza("Replication", entityContext, loggingService, redisCacheWrapper, configService, servicesUtilVirtuosoAndReplication);
                 try
                 {
 
@@ -105,7 +109,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
                         if (datosReplicacion.Key.Count > 1)
                         {
-                            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication);
+                            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mCadenaConexionVirtuoso);
                             virtuosoAD.IniciarTransaccion();
 
                             try
@@ -142,6 +146,10 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 catch
                 {
                     return false;
+                }
+                finally
+                {
+                    GuardarTraza(loggingService);
                 }
                 return true;
             }
@@ -443,7 +451,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                         Thread.Sleep(2000);
                     }
 
-                    virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication);
+                    virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, pConexionVirtuoso);
                     //Insertar en virtuoso
                     if (pUsarHttpPost)
                     {
