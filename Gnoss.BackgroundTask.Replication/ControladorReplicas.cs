@@ -23,6 +23,8 @@ using Es.Riam.Gnoss.AD.Virtuoso;
 using Es.Riam.Gnoss.AD.EntityModelBASE;
 using Microsoft.Extensions.DependencyInjection;
 using Es.Riam.AbstractsOpen;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 {
@@ -38,7 +40,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         /// <summary>
         /// Cadena de conexión que se debe usar para actualizar virtuoso.
         /// </summary>
-        private string mCadenaConexionVirtuoso;
+        private VirtuosoConnectionData mVirtuosoConnectionData;
 
         /// <summary>
         /// Devuelve si la cadena de conexión para actualizar virtuoso es una BBDD Master.
@@ -52,7 +54,8 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         private int mNumErroresConexion = 0;
         protected BaseComunidadDS mBaseComunidadDS;
         protected bool mTraerFilasConEstado2 = true;
-       
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
         #endregion
 
@@ -64,12 +67,19 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         /// <param name="pFicheroConfiguracionBD">Ruta al archivo de configuración de la base de datos</param>
         /// <param name="pTablaColaReplica">Nombre de la tabla de cola de esta réplica</param>
         //public ControladorReplica(string pExchangeName, string pTablaColaReplica, string pCadenaConexion,  LoggingService loggingService, EntityContext entityContext, ConfigService configService, RedisCacheWrapper redisCacheWrapper, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso)
-        public ControladorReplica(string pExchangeName, string pTablaColaReplica, string pCadenaConexion,ConfigService configService, IServiceScopeFactory scopeFactory)
-            : base(scopeFactory, configService)
+        public ControladorReplica(string pExchangeName, string pTablaColaReplica, string pCadenaConexion,ConfigService configService, IServiceScopeFactory scopeFactory, ILogger<ControladorReplica> logger, ILoggerFactory loggerFactory)
+            : base(scopeFactory, configService,logger,loggerFactory)
         {
             mExchangeName = pExchangeName;
             mTablaColaReplica = pTablaColaReplica;
             mCadenaConexion = pCadenaConexion;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
+
+            if (!string.IsNullOrEmpty(mCadenaConexion))
+            {
+                mVirtuosoConnectionData = new VirtuosoConnectionData(pTablaColaReplica, mCadenaConexion, mConfigService.ObtenerPuertoVirtuoso(), VirtuosoConnectionType.ReadAndWrite);
+            }
         }
 
         #endregion
@@ -109,7 +119,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
                         if (datosReplicacion.Key.Count > 1)
                         {
-                            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mCadenaConexionVirtuoso);
+                            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<VirtuosoAD>(), mLoggerFactory, mVirtuosoConnectionData);
                             virtuosoAD.IniciarTransaccion();
 
                             try
@@ -118,7 +128,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                                 {
                                     try
                                     {
-                                        InsertarEnVirtuoso(mCadenaConexionVirtuoso, consultaTransaccion, usarHttpPost, false, entityContext, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication);
+                                        InsertarEnVirtuoso(mVirtuosoConnectionData, consultaTransaccion, usarHttpPost, false, entityContext, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication);
                                     }
                                     catch
                                     {
@@ -138,7 +148,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                             string consulta = datosReplicacion.Key.First();
                             if (!string.IsNullOrEmpty(consulta))
                             {
-                                InsertarEnVirtuoso(mCadenaConexionVirtuoso, datosReplicacion.Key.First(), usarHttpPost, false, entityContext, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication);
+                                InsertarEnVirtuoso(mVirtuosoConnectionData, datosReplicacion.Key.First(), usarHttpPost, false, entityContext, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication);
                             }
                         }
                     }
@@ -173,7 +183,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 RabbitMQClient.ReceivedDelegate funcionProcesarItem = new RabbitMQClient.ReceivedDelegate(ProcesarItem);
                 RabbitMQClient.ShutDownDelegate funcionShutDown = new RabbitMQClient.ShutDownDelegate(OnShutDown);
 
-                RabbitMQClient rMQ = new RabbitMQClient(bdRabbit, mTablaColaReplica, loggingService, mConfigService, mExchangeName);
+                RabbitMQClient rMQ = new RabbitMQClient(bdRabbit, mTablaColaReplica, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, mExchangeName);
                 
                 try
                 {
@@ -183,7 +193,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 catch (Exception ex)
                 {
                     mReiniciarLecturaRabbit = true;
-                    loggingService.GuardarLogError(ex);
+                    loggingService.GuardarLogError(ex,mlogger);
                 }
             }
         }
@@ -202,7 +212,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 }
             }
 
-            ReplicacionCN replicacionCN = new ReplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ReplicacionCN replicacionCN = new ReplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ReplicacionCN>(), mLoggerFactory);
 
             BaseComunidadDS baseComunidadDS = null;
             List<BaseComunidadDS.ColaReplicacionRow> listaFilasOriginal = null;
@@ -217,7 +227,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
             short estado = 5;
 
-            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication);
+            VirtuosoAD virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<VirtuosoAD>(), mLoggerFactory);
             virtuosoAD.IniciarTransaccion();
 
             try
@@ -297,8 +307,6 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                     throw new Exception("No hay una ninguna BBDD con numConexion '" + mCadenaConexion + "', en el entorno '" + mFicheroConfiguracionBDOriginal + "', tabla '" + mTablaColaReplica + "'.");
                 }
 
-            mCadenaConexionVirtuoso = mCadenaConexion;
-
             mDBMaster = true;
 
             //ParametroAplicacionDS.ConfiguracionBBDD.Clear();
@@ -324,13 +332,13 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             Exception excepcion = null;
             bool excepcionLanzada = false;
             bool hayError = false;
-            BaseComunidadCN baseComunidadCN = new BaseComunidadCN(mFicheroConfiguracionBDBase, -1, entityContext, loggingService, entityContextBASE, mConfigService, servicesUtilVirtuosoAndReplication);
+            BaseComunidadCN baseComunidadCN = new BaseComunidadCN(mFicheroConfiguracionBDBase, -1, entityContext, loggingService, entityContextBASE, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<BaseComunidadCN>(), mLoggerFactory);
 
             try
             {
                 bool usarHttpPost = (!pFilaCola.IsUsarHttpPostNull() && pFilaCola.UsarHttpPost);
 
-                InsertarEnVirtuoso(mCadenaConexionVirtuoso, pFilaCola.Consulta, usarHttpPost, pReintentarSiFalla, entityContext, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication);
+                InsertarEnVirtuoso(mVirtuosoConnectionData, pFilaCola.Consulta, usarHttpPost, pReintentarSiFalla, entityContext, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication);
 
                 if (pFilaCola.Estado == 2)
                 {
@@ -414,12 +422,12 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         /// Hacemos 3 intentos de la insercción en Virtuoso
         /// </summary>
         /// <param name="pConsulta"></param>
-        private void InsertarEnVirtuoso(string pConexionVirtuoso, string pConsulta, bool pUsarHttpPost, bool pReintentarSiFalla, EntityContext entityContext, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        private void InsertarEnVirtuoso(VirtuosoConnectionData pVirtuosoConnectionData, string pConsulta, bool pUsarHttpPost, bool pReintentarSiFalla, EntityContext entityContext, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             VirtuosoAD virtuosoAD = null;
             try
             {
-                virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, pConexionVirtuoso);
+                virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<VirtuosoAD>(), mLoggerFactory, pVirtuosoConnectionData);
                 //Insertar en virtuoso
 
                 if (pUsarHttpPost)
@@ -445,13 +453,13 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                     ControladorConexiones.CerrarConexiones(false);
 
                     //Realizamos una consulta ask a virtuoso para comprobar si está funcionando
-                    while (!utilidadesVirtuoso.VirtuosoOperativo(mCadenaConexionVirtuoso))
+                    while (!utilidadesVirtuoso.VirtuosoOperativo(mVirtuosoConnectionData))
                     {
                         //Dormimos 30 segundos
                         Thread.Sleep(2000);
                     }
 
-                    virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, pConexionVirtuoso);
+                    virtuosoAD = new VirtuosoAD(loggingService, entityContext, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<VirtuosoAD>(), mLoggerFactory, pVirtuosoConnectionData);
                     //Insertar en virtuoso
                     if (pUsarHttpPost)
                     {
@@ -527,7 +535,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
                     #endregion
 
-                    BaseComunidadCN brComCN = new BaseComunidadCN(mFicheroConfiguracionBDBase, -1, entityContext, loggingService, entityContextBASE, mConfigService, servicesUtilVirtuosoAndReplication);
+                    BaseComunidadCN brComCN = new BaseComunidadCN(mFicheroConfiguracionBDBase, -1, entityContext, loggingService, entityContextBASE, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<BaseComunidadCN>(), mLoggerFactory);
                     brComCN.InsertarFilasEnRabbit("ColaTagsComunidades", baseRecursosComDS);
                     brComCN.Dispose();
 
@@ -560,7 +568,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             }
 
             //Recursos de comunidad
-            ReplicacionCN replicacionCN = new ReplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication);
+            ReplicacionCN replicacionCN = new ReplicacionCN(entityContext, loggingService, mConfigService, servicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ReplicacionCN>(), mLoggerFactory);
 
             //pNombreTabla = tabla de la que trae las querys para insertar en las replicaciones
             if (string.IsNullOrEmpty(pNombreTabla))
@@ -580,7 +588,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
         protected override ControladorServicioGnoss ClonarControlador()
         {
-            return new ControladorReplica(mExchangeName, mTablaColaReplica, mCadenaConexion, mConfigService, ScopedFactory);
+            return new ControladorReplica(mExchangeName, mTablaColaReplica, mCadenaConexion, mConfigService, ScopedFactory, mLoggerFactory.CreateLogger<ControladorReplica>(), mLoggerFactory);
         }
 
         public override string VersionEnsamblado()

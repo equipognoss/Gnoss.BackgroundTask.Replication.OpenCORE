@@ -1,6 +1,7 @@
 using Es.Riam.Gnoss.AD.EntityModel;
 using Es.Riam.Gnoss.AD.EntityModelBASE;
 using Es.Riam.Gnoss.CL;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 using Es.Riam.Gnoss.Servicios;
 using Es.Riam.Gnoss.Util.Configuracion;
 using Es.Riam.Gnoss.Util.General;
@@ -19,9 +20,13 @@ namespace Gnoss.BackgroundTask.Replication
     public class ReplicationWorker : Worker
     {
         private ConfigService mConfigService;
-        public ReplicationWorker(ILogger<Worker> logger,ConfigService configService, IServiceScopeFactory scopeFactory) : base(logger, scopeFactory)
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
+        public ReplicationWorker(ConfigService configService, IServiceScopeFactory scopeFactory, ILogger<ReplicationWorker> logger, ILoggerFactory loggerFactory) : base(logger, scopeFactory)
         {
             mConfigService = configService;
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
         }
 
         protected override List<ControladorServicioGnoss> ObtenerControladores()
@@ -38,11 +43,11 @@ namespace Gnoss.BackgroundTask.Replication
             List<ControladorServicioGnoss> controladores = new List<ControladorServicioGnoss>();
             foreach(var item in mConfigService.ObtenerColasReplicacionMasterHome())
             {
-                controladores.Add(new ControladorReplica("ColaReplicacionMasterHome", item.Key, item.Value, mConfigService, ScopedFactory));
+                controladores.Add(new ControladorReplica("ColaReplicacionMasterHome", item.Key, item.Value, mConfigService, ScopedFactory, mLoggerFactory.CreateLogger<ControladorReplica>(), mLoggerFactory));
             }
             foreach (var item in mConfigService.ObtenerColasReplicacionMaster())
             {
-                controladores.Add(new ControladorReplica("ColaReplicacionMaster", item.Key, item.Value, mConfigService, ScopedFactory));
+                controladores.Add(new ControladorReplica("ColaReplicacionMaster", item.Key, item.Value, mConfigService, ScopedFactory, mLoggerFactory.CreateLogger<ControladorReplica>(), mLoggerFactory));
             }
 
             return controladores;

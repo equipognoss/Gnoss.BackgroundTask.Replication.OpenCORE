@@ -19,6 +19,8 @@ using Es.Riam.Gnoss.AD.EntityModel;
 using Es.Riam.Gnoss.Util.General;
 using Es.Riam.Gnoss.Util.Configuracion;
 using Es.Riam.AbstractsOpen;
+using Microsoft.Extensions.Logging;
+using Es.Riam.Gnoss.Elementos.Suscripcion;
 
 namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 {
@@ -79,6 +81,8 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         private LoggingService mLogginService;
         private ConfigService mConfigService;
         private IServicesUtilVirtuosoAndReplication mServicesUtilVirtuosoAndReplication;
+        private ILogger mlogger;
+        private ILoggerFactory mLoggerFactory;
 
         #endregion
 
@@ -88,7 +92,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         /// Constructor
         /// </summary>
         /// <param name="pFicheroConfiguracionBD">Ruta al archivo de configuración de la base de datos</param>
-        public ControladorBase(string pFicheroConfiguracionBD, EntityContext entityContext, LoggingService loggingService, ConfigService configService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public ControladorBase(string pFicheroConfiguracionBD, EntityContext entityContext, LoggingService loggingService, ConfigService configService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication, ILogger<ControladorBase> logger, ILoggerFactory loggerFactory)
         {
             mEntityContext = entityContext;
             mLogginService = loggingService;
@@ -101,6 +105,8 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
             string nombreLog = Path.GetFileNameWithoutExtension(mFicheroConfiguracionBD);
             string directorioLog = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + Path.DirectorySeparatorChar + "logs";
+            mlogger = logger;
+            mLoggerFactory = loggerFactory;
 
             if (!Directory.Exists(directorioLog))
             {
@@ -155,7 +161,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 }
 
                 //Recursos de comunidad
-                ReplicacionCN replicacionCN = new ReplicacionCN(mEntityContext, mLogginService, mConfigService, mServicesUtilVirtuosoAndReplication);
+                ReplicacionCN replicacionCN = new ReplicacionCN(mEntityContext, mLogginService, mConfigService, mServicesUtilVirtuosoAndReplication, mLoggerFactory.CreateLogger<ReplicacionCN>(), mLoggerFactory);
 
                 //pNombreTabla = tabla de la que trae las querys para insertar en las replicaciones
                 if (string.IsNullOrEmpty(pNombreTabla))
