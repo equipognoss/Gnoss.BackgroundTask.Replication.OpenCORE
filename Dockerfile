@@ -9,13 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl
 
 WORKDIR /app
 
-COPY Gnoss.BackgroundTask.Replication/*.csproj ./
-
-RUN dotnet restore
-
 COPY . ./
 
-RUN dotnet publish Gnoss.BackgroundTask.Replication/Gnoss.BackgroundTask.Replication.csproj -c Release -o out
+RUN dotnet restore Gnoss.BackgroundTask.Replication.OpenCORE/Gnoss.BackgroundTask.Replication/Gnoss.BackgroundTask.Replication.csproj
+
+RUN dotnet publish Gnoss.BackgroundTask.Replication.OpenCORE/Gnoss.BackgroundTask.Replication/Gnoss.BackgroundTask.Replication.csproj -c Release -o out
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
