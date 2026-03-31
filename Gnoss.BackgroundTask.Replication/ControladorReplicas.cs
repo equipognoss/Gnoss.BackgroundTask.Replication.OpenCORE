@@ -315,7 +315,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             {
                 // Escribir en LOG el error y la BBDD
                 string error = loggingService.DevolverCadenaError(ex, VersionEnsamblado());
-                GuardarLog(error, loggingService);
+                loggingService.GuardarLogError(error, mLogger);
                 throw;
             }
         }
@@ -369,7 +369,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                     }
                     else
                     {
-                        GuardarLog(ex, loggingService);
+                        loggingService.GuardarLogError(ex, mLogger);
                     }
 
                     //Cambiamos el estado de la fila a 4 para que no la re-intente.
@@ -398,7 +398,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                         }
                         else
                         {
-                            GuardarLog(mensajeError, loggingService);
+                            loggingService.GuardarLogError(mensajeError, mLogger);
                         }
                     }
                 }
@@ -442,7 +442,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             catch (Exception ex)
             {
                 string error = loggingService.DevolverCadenaError(ex, VersionEnsamblado());
-                GuardarLog(error, loggingService);
+                loggingService.GuardarLogError(error, mLogger);
 
                 if (pReintentarSiFalla)
                 {
@@ -543,7 +543,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 }
                 catch (Exception ex)
                 {
-                    GuardarLog("Error al agregar al base. Conexión '" + mFicheroConfiguracionBDOriginal + "', tabla '" + mTablaColaReplica + "'" + Environment.NewLine + ex.Message + Environment.NewLine + ex.StackTrace, loggingService);
+                    loggingService.GuardarLogError("Error al agregar al base. Conexión '" + mFicheroConfiguracionBDOriginal + "', tabla '" + mTablaColaReplica + "'" + Environment.NewLine + ex.Message + Environment.NewLine + ex.StackTrace, mLogger);
                 }
             }
         }
