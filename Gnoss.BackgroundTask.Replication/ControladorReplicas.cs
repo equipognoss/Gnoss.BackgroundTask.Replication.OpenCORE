@@ -3,19 +3,14 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Reflection;
 using System.Data;
-using Es.Riam.Util;
 using Es.Riam.Gnoss.Logica.BASE_BD;
 using Es.Riam.Gnoss.AD.BASE_BD;
 using Es.Riam.Gnoss.AD.BASE_BD.Model;
-using Es.Riam.Gnoss.Logica.ParametroAplicacion;
-
 using Es.Riam.Gnoss.Util.General;
 using Es.Riam.Gnoss.Recursos;
-
 using Es.Riam.Gnoss.Servicios;
 using System.Linq;
 using Es.Riam.Gnoss.RabbitMQ;
-using Newtonsoft.Json;
 using Es.Riam.Gnoss.AD.EntityModel;
 using Es.Riam.Gnoss.Util.Configuracion;
 using Es.Riam.Gnoss.CL;
@@ -24,7 +19,7 @@ using Es.Riam.Gnoss.AD.EntityModelBASE;
 using Microsoft.Extensions.DependencyInjection;
 using Es.Riam.AbstractsOpen;
 using Microsoft.Extensions.Logging;
-using Es.Riam.Gnoss.Elementos.Suscripcion;
+using System.Text.Json;
 
 namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 {
@@ -33,17 +28,17 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         #region Miembros
 
         /// <summary>
-        /// El número de la conexión que se debe usar para actualizar virtusos.
+        /// El nï¿½mero de la conexiï¿½n que se debe usar para actualizar virtusos.
         /// </summary>
         private string mCadenaConexion;
 
         /// <summary>
-        /// Cadena de conexión que se debe usar para actualizar virtuoso.
+        /// Cadena de conexiï¿½n que se debe usar para actualizar virtuoso.
         /// </summary>
         private VirtuosoConnectionData mVirtuosoConnectionData;
 
         /// <summary>
-        /// Devuelve si la cadena de conexión para actualizar virtuoso es una BBDD Master.
+        /// Devuelve si la cadena de conexiï¿½n para actualizar virtuoso es una BBDD Master.
         /// </summary>
         private bool mDBMaster;
         private string mExchangeName;
@@ -56,6 +51,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         protected bool mTraerFilasConEstado2 = true;
         private ILogger mlogger;
         private ILoggerFactory mLoggerFactory;
+        private RabbitMQClient mRabbitMQClient;
 
         #endregion
 
@@ -64,8 +60,8 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="pFicheroConfiguracionBD">Ruta al archivo de configuración de la base de datos</param>
-        /// <param name="pTablaColaReplica">Nombre de la tabla de cola de esta réplica</param>
+        /// <param name="pFicheroConfiguracionBD">Ruta al archivo de configuraciï¿½n de la base de datos</param>
+        /// <param name="pTablaColaReplica">Nombre de la tabla de cola de esta rï¿½plica</param>
         //public ControladorReplica(string pExchangeName, string pTablaColaReplica, string pCadenaConexion,  LoggingService loggingService, EntityContext entityContext, ConfigService configService, RedisCacheWrapper redisCacheWrapper, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso)
         public ControladorReplica(string pExchangeName, string pTablaColaReplica, string pCadenaConexion,ConfigService configService, IServiceScopeFactory scopeFactory, ILogger<ControladorReplica> logger, ILoggerFactory loggerFactory)
             : base(scopeFactory, configService,logger,loggerFactory)
@@ -84,7 +80,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
         #endregion
 
-        #region Métodos generales
+        #region Mï¿½todos generales
         private bool mReiniciarCola = false;
 
         public void OnShutDown()
@@ -113,7 +109,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
 
                     if (!string.IsNullOrEmpty(pConsulta))
                     {
-                        KeyValuePair<List<string>, bool> datosReplicacion = JsonConvert.DeserializeObject<KeyValuePair<List<string>, bool>>(pConsulta);
+                        KeyValuePair<List<string>, bool> datosReplicacion = JsonSerializer.Deserialize<KeyValuePair<List<string>, bool>>(pConsulta);
 
                         bool usarHttpPost = datosReplicacion.Value;
 
@@ -165,7 +161,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             }
         }
 
-        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, VirtuosoAD virtuosoAD, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
+        public override void RealizarMantenimiento(EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, RedisCacheWrapper redisCacheWrapper, GnossCache gnossCache, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             CargarDatosConexionVirutoso(loggingService);
 
@@ -183,11 +179,12 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 RabbitMQClient.ReceivedDelegate funcionProcesarItem = new RabbitMQClient.ReceivedDelegate(ProcesarItem);
                 RabbitMQClient.ShutDownDelegate funcionShutDown = new RabbitMQClient.ShutDownDelegate(OnShutDown);
 
-                RabbitMQClient rMQ = new RabbitMQClient(bdRabbit, mTablaColaReplica, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, mExchangeName);
-                
+                mRabbitMQClient?.Dispose();
+                mRabbitMQClient = new RabbitMQClient(bdRabbit, mTablaColaReplica, loggingService, mConfigService, mLoggerFactory.CreateLogger<RabbitMQClient>(), mLoggerFactory, mExchangeName);
+
                 try
                 {
-                    rMQ.ObtenerElementosDeCola(funcionProcesarItem, funcionShutDown);
+                    mRabbitMQClient.ObtenerElementosDeCola(funcionProcesarItem, funcionShutDown);
                     mReiniciarCola = false;
                 }
                 catch (Exception ex)
@@ -241,7 +238,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                         if (!ProcesarFila(filaReplica, false, entityContext, entityContextBASE, utilidadesVirtuoso, loggingService, servicesUtilVirtuosoAndReplication))
                         {
                             estado = filaReplica.Estado;
-                            throw new Exception($"Error al replicar instrucción {filaReplica.OrdenEjecucion}. Query: {filaReplica.Consulta}. Transaccion: {filaReplica.InfoExtra}");
+                            throw new Exception($"Error al replicar instrucciï¿½n {filaReplica.OrdenEjecucion}. Query: {filaReplica.Consulta}. Transaccion: {filaReplica.InfoExtra}");
                         }
                     }
                     catch
@@ -282,7 +279,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         }
 
         /// <summary>
-        /// A partir del número de conexión obtiene los demás datos necesarios para actualizar virtuoso.
+        /// A partir del nï¿½mero de conexiï¿½n obtiene los demï¿½s datos necesarios para actualizar virtuoso.
         /// </summary>
         private void CargarDatosConexionVirutoso(LoggingService loggingService)
         {
@@ -321,9 +318,9 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         }
 
         /// <summary>
-        /// Procesa una fila de la cola de replicación
+        /// Procesa una fila de la cola de replicaciï¿½n
         /// </summary>
-        /// <param name="pFilaCola">Fila de la cola de replicación</param>
+        /// <param name="pFilaCola">Fila de la cola de replicaciï¿½n</param>
         /// <param name="pReintentarSiFalla">Verdad si se debe de reintentar la consulta en caso de error</param>
         /// <returns>Verdad si se ha procesado correctamente, falso en caso contrario</returns>
         private bool ProcesarFila(BaseComunidadDS.ColaReplicacionRow pFilaCola, bool pReintentarSiFalla, EntityContext entityContext, EntityContextBASE entityContextBASE, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
@@ -344,18 +341,18 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 {
                     actualizarCola = true;
                     excepcionLanzada = false;
-                    //La replicación había fallado y ahora vuelve a funcionar, informo de ello. 
-                    EnviarErrorYGuardarLog(new ExcepcionDeReplicacion("Mensaje informativo: La replicación de virtuoso para la conexión '" + mFicheroConfiguracionBDOriginal + "' y la tabla '" + mTablaColaReplica + "' vuelve a funcionar CORRECTAMENTE. "), "Servicio de replicación de virtuoso restituido", loggingService);
+                    //La replicaciï¿½n habï¿½a fallado y ahora vuelve a funcionar, informo de ello. 
+                    EnviarErrorYGuardarLog(new ExcepcionDeReplicacion("Mensaje informativo: La replicaciï¿½n de virtuoso para la conexiï¿½n '" + mFicheroConfiguracionBDOriginal + "' y la tabla '" + mTablaColaReplica + "' vuelve a funcionar CORRECTAMENTE. "), "Servicio de replicaciï¿½n de virtuoso restituido", loggingService);
                 }
 
-                //Éxito
+                //ï¿½xito
                 pFilaCola.Estado = 5;
                 hayError = false;
             }
             catch (Exception ex)
             {
                 hayError = true;
-                string mensaje = "Excepción: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace + "\n\nFila: " + pFilaCola["OrdenEjecucion"];
+                string mensaje = "Excepciï¿½n: " + ex.ToString() + "\n\n\tTraza: " + ex.StackTrace + "\n\nFila: " + pFilaCola["OrdenEjecucion"];
 
                 //TODO: Comprobar que funciona
                 if ((ex.InnerException != null) && (ex.InnerException.StackTrace.Contains("SQLSTATE: 37000") || ex.InnerException.Message.Contains("SQLSTATE: 37000") || ex.Message.Contains("Virtuoso 37000") || ex.InnerException.Message.Contains("syntax error") || ex.InnerException.StackTrace.Contains("syntax error")) || ex.InnerException.Message.Contains("Empty string is not a valid argument"))
@@ -364,7 +361,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                     //Si no se ha mandado email, enviamos uno
                     if (mFechaEmail_UltimoErrorSintaxis == null || mFechaEmail_UltimoErrorSintaxis.AddDays(1) < DateTime.Now)
                     {
-                        EnviarErrorYGuardarLog(ex, "Servicio de replicación de virtuoso restituido", loggingService);
+                        EnviarErrorYGuardarLog(ex, "Servicio de replicaciï¿½n de virtuoso restituido", loggingService);
                         mFechaEmail_UltimoErrorSintaxis = DateTime.Now;
                     }
                     else
@@ -383,16 +380,16 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                         pFilaCola.Estado++;
                     }
                     //Si falla insertar en una fila, guardar log
-                    string mensajeError = "Error al replicar la transacción: " + pFilaCola.OrdenEjecucion + ". ";
+                    string mensajeError = "Error al replicar la transacciï¿½n: " + pFilaCola.OrdenEjecucion + ". ";
 
-                    //Compruebo si había error previamente. Si es así, no envío emails continuamente. 
+                    //Compruebo si habï¿½a error previamente. Si es asï¿½, no envï¿½o emails continuamente. 
                     if (!excepcionLanzada)
                     {
                         excepcion = ex;
                         if (pFilaCola.Estado == 2)
                         {
-                            mensajeError += "La replicación de virtuoso para " + mTablaColaReplica + " está PARADA. ";
-                            // Creo la excepción, pero se lanza al final del foreach para actualizar el estado de la fila en BD
+                            mensajeError += "La replicaciï¿½n de virtuoso para " + mTablaColaReplica + " estï¿½ PARADA. ";
+                            // Creo la excepciï¿½n, pero se lanza al final del foreach para actualizar el estado de la fila en BD
                             excepcion = new ExcepcionDeReplicacion(mensajeError, ex);
                             excepcionLanzada = true;
                         }
@@ -408,7 +405,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
             {
                 if (excepcion != null)
                 {
-                    //La replicación ha fallado, lanzo la excepción
+                    //La replicaciï¿½n ha fallado, lanzo la excepciï¿½n
                     throw excepcion;
                 }
             }
@@ -419,7 +416,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         }
 
         /// <summary>
-        /// Hacemos 3 intentos de la insercción en Virtuoso
+        /// Hacemos 3 intentos de la insercciï¿½n en Virtuoso
         /// </summary>
         /// <param name="pConsulta"></param>
         private void InsertarEnVirtuoso(VirtuosoConnectionData pVirtuosoConnectionData, string pConsulta, bool pUsarHttpPost, bool pReintentarSiFalla, EntityContext entityContext, UtilidadesVirtuoso utilidadesVirtuoso, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
@@ -452,7 +449,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                     //Cerramos las conexiones
                     ControladorConexiones.CerrarConexiones(false);
 
-                    //Realizamos una consulta ask a virtuoso para comprobar si está funcionando
+                    //Realizamos una consulta ask a virtuoso para comprobar si estï¿½ funcionando
                     while (!utilidadesVirtuoso.VirtuosoOperativo(mVirtuosoConnectionData))
                     {
                         //Dormimos 30 segundos
@@ -478,13 +475,13 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         }
 
         /// <summary>
-        /// Método para enviar al servicio Modulo Base los parámetros enviados como parámetro extra
+        /// Mï¿½todo para enviar al servicio Modulo Base los parï¿½metros enviados como parï¿½metro extra
         /// </summary>
-        /// <param name="pInfoExtra">Parámetros extra para que procese el servicio módulo Base.</param>
+        /// <param name="pInfoExtra">Parï¿½metros extra para que procese el servicio mï¿½dulo Base.</param>
         private void EnviarFilasServicioBase(string pInfoExtra,EntityContext entityContext, EntityContextBASE entityContextBASE, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             string[] delimiter = { "|;|%|;|" };
-            //Insertamos en el base los nuevos parámetros
+            //Insertamos en el base los nuevos parï¿½metros
             foreach (string nuevaFila in pInfoExtra.Split(delimiter, StringSplitOptions.RemoveEmptyEntries))
             {
                 try
@@ -498,7 +495,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                     //Tag
                     string tag = fila[1];
 
-                    //Tipo de acción (0 agregado) (1 eliminado)
+                    //Tipo de acciï¿½n (0 agregado) (1 eliminado)
                     short accion = short.Parse(fila[2]);
 
                     //Prioridad de procesado por el servicio base.
@@ -543,7 +540,7 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
                 }
                 catch (Exception ex)
                 {
-                    loggingService.GuardarLogError("Error al agregar al base. Conexión '" + mFicheroConfiguracionBDOriginal + "', tabla '" + mTablaColaReplica + "'" + Environment.NewLine + ex.Message + Environment.NewLine + ex.StackTrace, mLogger);
+                    loggingService.GuardarLogError("Error al agregar al base. Conexiï¿½n '" + mFicheroConfiguracionBDOriginal + "', tabla '" + mTablaColaReplica + "'" + Environment.NewLine + ex.Message + Environment.NewLine + ex.StackTrace, mLogger);
                 }
             }
         }
@@ -552,14 +549,14 @@ namespace Es.Riam.Gnoss.Win.ServicioReplicacionVirtuoso
         /// Carga los mantenimientos pendientes
         /// </summary>
         /// <param name="pNombreTabla"></param>
-        /// <returns>Verdad si hay algún elemento que procesar</returns>
+        /// <returns>Verdad si hay algï¿½n elemento que procesar</returns>
         protected bool CargarDatos(string pNombreTabla, EntityContext entityContext, LoggingService loggingService, IServicesUtilVirtuosoAndReplication servicesUtilVirtuosoAndReplication)
         {
             bool hayElementosEnCola = false;
 
             int numMaxItems = 200;
 
-            // La primera vez que arranca el servicio, se trae las filas que habían fallado antes. 
+            // La primera vez que arranca el servicio, se trae las filas que habï¿½an fallado antes. 
             short estadoMax = 2;
             if (mTraerFilasConEstado2)
             {
